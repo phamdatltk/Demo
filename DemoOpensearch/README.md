@@ -118,10 +118,8 @@ GET _cat/shards/fde_demo_index_two_shard
 ```
 Ta được kết quả
 ```
-fde_demo_index_two_shard 1 p STARTED  976 65.3kb 10.20.10.8  fde-opensearch-0rr6jng4-node2
-fde_demo_index_two_shard 1 r STARTED  976 71.2kb 10.20.10.4  fde-opensearch-0rr6jng4-node1
-fde_demo_index_two_shard 0 r STARTED 1024 73.2kb 10.20.10.13 fde-opensearch-0rr6jng4-node3
-fde_demo_index_two_shard 0 p STARTED 1024 67.4kb 10.20.10.4  fde-opensearch-0rr6jng4-node1
+fde_demo_index_no_replica_two_shard 1 p STARTED  995 65.9kb 10.20.10.13 fde-opensearch-0rr6jng4-node3
+fde_demo_index_no_replica_two_shard 0 p STARTED 1005 66.2kb 10.20.10.8  fde-opensearch-0rr6jng4-node2
 
 ```
 Giải thích: 
