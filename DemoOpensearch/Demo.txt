@@ -1,0 +1,128 @@
+# Kiểm tra trạng thái cluster
+GET /_cluster/health
+
+# Kiểm tra node đang là cluster manager
+GET /_cat/cluster_manager
+
+# Kiểm tra danh sách các index
+GET /_cat/indices?v
+
+
+
+
+
+
+# Tạo index với 1 shard và 1 replica
+PUT /fde_demo_index
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 1
+  }
+}
+
+# Kiểm tra xem dữ liệu được xphân vào đtrong node nào
+GET _cat/shards/fde_demo_index
+
+# Kiểm tra dữ liệu
+GET /fde_demo_index/_search
+
+# Truy vấn dữ liệu
+GET /fde_demo_index/_search
+{
+  "query": {
+    "match": {
+      "title": "Hai Phong"
+    }
+  }
+}
+
+
+
+
+
+
+# Tạo index với 1 shard và 0 replica
+PUT /fde_demo_index_no_replica
+{
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 0
+  }
+}
+
+# Kiểm tra xem dữ liệu được xphân vào đtrong node nào
+GET _cat/shards/fde_demo_index_no_replica
+
+# Kiểm tra dữ liệu
+GET /fde_demo_index_no_replica/_search
+
+# Truy vấn dữ liệu
+GET /fde_demo_index_no_replica/_search
+{
+  "query": {
+    "match": {
+      "title": "Hai Phong"
+    }
+  }
+}
+
+
+
+
+
+
+# Tạo index với 2 shard và 1 replica
+PUT /fde_demo_index_two_shard
+{
+  "settings": {
+    "number_of_shards": 2,
+    "number_of_replicas": 1
+  }
+}
+
+# Kiểm tra xem dữ liệu được xphân vào đtrong node nào
+GET _cat/shards/fde_demo_index_two_shard
+
+# Kiểm tra dữ liệu
+GET /fde_demo_index_two_shard/_search
+
+# Truy vấn dữ liệu
+GET /fde_demo_index_two_shard/_search
+{
+  "query": {
+    "match": {
+      "title": "Hai Phong"
+    }
+  }
+}
+
+
+
+
+
+
+# Tạo index với 2 shard và 0 replica
+PUT /fde_demo_index_no_replica_two_shard
+{
+  "settings": {
+    "number_of_shards": 2,
+    "number_of_replicas": 0
+  }
+}
+
+# Kiểm tra xem dữ liệu được xphân vào đtrong node nào
+GET _cat/shards/fde_demo_index_no_replica_two_shard
+
+# Kiểm tra dữ liệu
+GET /fde_demo_index_no_replica_two_shard/_search
+
+# Truy vấn dữ liệu
+GET /fde_demo_index_no_replica_two_shard/_search
+{
+  "query": {
+    "match": {
+      "title": "Hai Phong"
+    }
+  }
+}
