@@ -123,4 +123,4 @@ fde_demo_index_no_replica_two_shard 0 p STARTED 1005 66.2kb 10.20.10.8  fde-open
 
 ```
 Giải thích: 
-- Dữ liệu đã được đưa vào 2 primary shard và đã được replicate
+- Dữ liệu đã được đưa vào 2 primary shard và không được replicate
