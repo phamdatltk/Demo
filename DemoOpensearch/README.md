@@ -28,7 +28,7 @@ fde_test 0 p STARTED 0 208b 10.20.10.13 fde-opensearch-0rr6jng4-node3
 fde_test 0 r STARTED 0 208b 10.20.10.4  fde-opensearch-0rr6jng4-node1
 ```
 Giải thích:
-- Mặc định khi tạo index mà không config sẽ tạo ra 2 shard và 0 replica
+- Mặc định khi tạo index mà không config sẽ tạo ra 1 primary shard và 1 replica
 ## Index 1 shard, 1 replica
 Câu lệnh tạo index:
 ```
