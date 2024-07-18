@@ -127,6 +127,29 @@ GET /fde_demo_index_no_replica_two_shard/_search
   }
 }
 
+# Config slowlog
+PUT fde_demo_index_no_replica_two_shard/_settings
+{
+  "search": {
+    "slowlog": {
+      "level": "TRACE",
+      "threshold": {
+        "fetch": {
+          "warn": "0",
+          "trace": "0",
+          "debug": "0",
+          "info": "0"
+        },
+        "query": {
+          "warn": "0",
+          "trace": "0",
+          "debug": "0",
+          "info": "0"
+        }
+      }
+    }
+  }
+}
 
 # Xóa 1 document
 DELETE /fde_demo_index_no_replica_two_shard/_doc/P3mvw5ABH4jaoiaH3h6l
