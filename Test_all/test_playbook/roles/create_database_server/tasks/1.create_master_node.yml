@@ -1,0 +1,35 @@
+---
+
+- name: add VM org direct network to vapp for database cluster
+  vcd_vapp:
+    user: "{{ vcd_user }}"
+    password: "{{ vcd_pass }}"
+    org: "{{ org_name }}"
+    vapp_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    vdc: "{{ vdc_name }}"
+    network: "{{ vm_network }}"
+    operation: add_org_network
+
+- wait_for:
+    timeout: 5
+
+- name: Create master node
+  no_log: False
+  vcd_vapp_vm:
+    target_vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+    target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    source_catalog_name: "{{ catalog.name }}"
+    source_template_name: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% else %}{{ catalog.template_default }}{% endif %}"
+    source_vm_name: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% else %}{{ catalog.template_default }}{% endif %}"
+    target_vdc: "{{ vdc_name }}"
+    source_vdc: "{{ vdc_name }}"
+    hostname: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+    vmpassword: "{{ vm_pass }}"
+    vmpassword_auto: "false"
+    vmpassword_reset: "false"
+    ip_allocation_mode: "POOL"
+    state: "present"
+    power_on: "false"
+    all_eulas_accepted: "true"
+    storage_profile: "{{ storage_profile }}"
+    network: "{{ vm_network }}"

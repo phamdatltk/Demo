@@ -1,0 +1,29 @@
+---
+- name: create vapp for database cluster
+  vcd_vapp:
+    vapp_name: "{{ item }}"
+    vdc: "{{ vdc_name }}"
+    power_on: False
+    state: present
+  with_items:
+  - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+  register: init_vapp
+
+- set_fact:
+    initvapp:  "{{ init_vapp | to_json }}"
+
+- import_tasks: 1.create_vm.yml
+  when: 
+    - "'already present' not in initvapp"
+
+- import_tasks: 2.update_vm.yml
+  when: 
+    - "'already present' not in initvapp"
+
+- import_tasks: 5.make_inventory.yml
+
+# - import_tasks: create_snat_db.yml
+
+- import_tasks: create_kafka_rule.yml
+  when:
+    - type_db == "kafka"

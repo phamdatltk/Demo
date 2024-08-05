@@ -1,0 +1,21 @@
+- name: copy get_cidr.sh
+  template:
+    src: get_cidr.sh.j2
+    dest: /tmp/get_cidr.sh
+
+- name: Run get_cidr.sh
+  shell: |
+    /bin/bash /tmp/get_cidr.sh
+
+- name: set ip_restore as variable
+  set_fact:
+    cidr_db: "{{ lookup('file', '/tmp/cidr_db') }}"
+
+- name: Create SNAT for subnet db
+  gateway_snat_db_bkp_rule_service:
+    edge_gw_id: "{{edge_gateway_id}}"
+    name_snat_rule: "SNAT-FDE-{{ cidr_db }}"
+    internal_address: "{{ cidr_db }}"
+    translated_address: "{{ip_public}}"
+    priority: 2
+    state: present

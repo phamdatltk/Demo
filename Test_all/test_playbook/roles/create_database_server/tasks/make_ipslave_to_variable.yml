@@ -1,0 +1,24 @@
+---
+- name: add slave host to database_inventory
+  block:
+    - name: Add slave to AWX
+      tower_host:
+        name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave{{ item }}"
+        inventory: "{{ inventory_name }}"
+        state: present
+        variables:
+          ansible_host: "{{ lookup('file', '/tmp/ip_slave').splitlines()[0] }}"
+          ansible_port: 22
+          ip_vip: "{{ ip_vip | default(omit) }}"
+          ip_master: "{{ ip_master }}"
+          server_id: "{{ item |int +1 }}"
+          type: "slave"
+    
+    - set_fact:
+        ip_slave_{{ item }}: "{{ lookup('file', '/tmp/ip_slave').splitlines()[0] }}"
+      when:
+        type_db == "kafka"
+    
+    - name: delete used scan ip
+      shell: |
+        sed '1d' /tmp/ip_slave > /tmp/ip_slave_temp && mv /tmp/ip_slave_temp /tmp/ip_slave

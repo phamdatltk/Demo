@@ -1,0 +1,16 @@
+- name: Change disk {{ item }}
+  vcd_vapp_vm_disk:
+    user: "{{ vcd_user }}"
+    password: "{{ vcd_pass }}"
+    org: "{{ org_name }}"
+    vm_name: "{{ item }}"
+    vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    vdc: "{{ vdc_name }}"
+    disks:
+      - name: 'Hard disk 1'
+        size: "{{ (data_disk_size|int ) * 1024 }}"
+    state: update
+  register: result
+  retries: 3
+  delay: 20
+  until: result is not failed

@@ -1,0 +1,26 @@
+PROJECT_NAME=FCI-FDE-ECO-BE-MGMT-AGENT
+SECRET_KEY=FCI-FDE-ECO-BE-2022
+SECURITY_ALGORITHM=HS256
+LOG_LEVEL=info
+ALLOWED_HOSTS=List[str] = ["*"]
+URL_MONITORING_ENDPOINT=https://console-api-stg-fde.fptcloud.net/api/v1/xplat/database/monitoring
+URI_DATABASE_STATUS=/endpoint/%(cluster_id)s/syncdbstatus/%(ip_address)s
+URI_DATABASE_LOG=/endpoint/%(cluster_id)s/collectdblog
+SLEEP_TIME=10
+DB_TYPE=cassandra
+DB_PASS=ohYwHLpmVtbt
+DB_USER=admin
+DB_HOST=10.10.90.10
+DB_NAME=system
+DB_PORT=9042
+DB_RETRIES=5
+DB_INTERVAL=5
+CLUSTER_ID=6rfqos4h
+DB_PATH_LOG=/var/log/redis/redis-server.log
+DB_URL=redis:///?Server={host}&Port={port}&Password={password}
+BOOTSTRAP_SERVER=103.52.112.151:9092
+SECURITY_PROTOCOL=SASL_PLAINTEXT
+SASL_MECHANISM=PLAIN
+SASL_USERNAME=admin
+SASL_PASSWORD=ftVS7tSMgQLL
+TOPIC=sync_db_status_stg

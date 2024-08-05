@@ -1,0 +1,45 @@
+- name: copy get id rule
+  template:
+    src: get_id_rule.py.j2
+    dest: /tmp/get_id_rule.py
+
+- name: Run get_id_rule.py
+  shell: |
+    python3 /tmp/get_id_rule.py
+
+- name: print id_rule
+  shell: |
+    cat /tmp/id_rule.json | jq '.values[] | select(.name=="DNAT-{{ item }}-{{ cluster_id }}") | .id' -r > /tmp/id_rule_{{ item }}
+  with_items: 
+    - "master"
+    - "slave1"
+    - "slave2"
+
+- name: set rule master as variable
+  set_fact:
+    id_rule_master: "{{ lookup('file', '/tmp/id_rule_master') }}"
+
+- name: set rule slave 1 as variable
+  set_fact:
+    id_rule_slave1: "{{ lookup('file', '/tmp/id_rule_slave1') }}"
+
+- name: set rule slave 2 as variable
+  set_fact:
+    id_rule_slave2: "{{ lookup('file', '/tmp/id_rule_slave2') }}"
+
+- name: copy delete rule 
+  template:
+    src: delete_rule.py.j2
+    dest: /tmp/delete_rule_{{ item.name }}.py
+  with_items:
+    - { name: 'master', id:  "{{ id_rule_master }}" }
+    - { name: "slave1", id: "{{ id_rule_slave1 }}" }
+    - { name: "slave2", id: "{{ id_rule_slave2 }}" }
+
+- name: run delete_rule
+  shell: |
+    python3 /tmp/delete_rule_{{ item.name }}.py
+  with_items:
+    - { name: 'master', id: "{{ id_rule_master }}" }
+    - { name: 'slave1', id: "{{ id_rule_slave1 }}" }
+    - { name: 'slave2', id: "{{ id_rule_slave2 }}" }

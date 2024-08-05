@@ -1,0 +1,77 @@
+---
+
+- name: create backup vapp for cluster
+  vcd_vapp:
+    user: "{{ backup_vcd_user }}"
+    password: "{{ backup_vcd_pass }}"
+    host: "{{ backup_vcd_url }}"
+    org: "{{ backup_org_name }}"
+    vdc: "{{ backup_vdc_name }}"
+    vapp_name: "{{ backup.vapp_name }}"
+    power_on: False
+    state: present
+  register: init_vapp_backup
+
+- set_fact:
+    initvappbackup:  "{{ init_vapp_backup | to_json }}"
+
+- block:
+  - name: add VM org direct network to backup vapp
+    vcd_vapp:
+      user: "{{ backup_vcd_user }}"
+      password: "{{ backup_vcd_pass }}"
+      host: "{{ backup_vcd_url }}"
+      org: "{{ backup_org_name }}"
+      vdc: "{{ backup_vdc_name }}"
+      vapp_name: "{{ backup.vapp_name }}"
+      network: "{{ backup_vm_network }}"
+      operation: add_org_network
+  
+  - name: Create VM Backup
+    no_log: False
+    vcd_vapp_vm:
+      user: "{{ backup_vcd_user }}"
+      password: "{{ backup_vcd_pass }}"
+      host: "{{ backup_vcd_url }}"
+      org: "{{ backup_org_name }}"
+      vdc: "{{ backup_vdc_name }}"
+      network: "{{ backup_vm_network }}"
+      target_vm_name: "{{ backup.vm_name }}"
+      target_vapp: "{{ backup.vapp_name }}"
+      target_vdc: "{{ backup_vdc_name }}"
+      source_catalog_name: "{{ catalog.name }}"
+      source_template_name: "{{ catalog.template_backup }}"
+      source_vm_name: "{{ catalog.template_backup }}"
+      hostname: "{{ backup.vm_name }}"
+      vmpassword_auto: "false"
+      vmpassword_reset: "false"
+      ip_allocation_mode: "POOL"
+      state: "present"
+      power_on: "true"
+      all_eulas_accepted: "true"
+      storage_profile: "{{ backup_storage_profile }}"
+  when: "'already present' not in initvappbackup"
+
+- name: add disk backup server
+  vcd_vapp_vm_disk:
+    user: "{{ backup_vcd_user }}"
+    password: "{{ backup_vcd_pass }}"
+    host: "{{ backup_vcd_url }}"
+    org: "{{ backup_org_name }}"
+    vm_name: "{{ backup.vm_name }}"
+    vapp: "{{ backup.vapp_name }}"
+    vdc: "{{ backup_vdc_name }}"
+    disks:
+      - controller: VirtualSCSI
+        size: "{{ (backup_disk_size|int ) * 1024 }}"
+    state: "present"
+
+- name: power on vapp backup
+  vcd_vapp:
+    user: "{{ backup_vcd_user }}"
+    password: "{{ backup_vcd_pass }}"
+    host: "{{ backup_vcd_url }}"
+    org: "{{ backup_org_name }}"
+    vapp_name: "{{ backup.vapp_name }}"
+    vdc: "{{ backup_vdc_name }}"
+    operation: "poweron"

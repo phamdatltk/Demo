@@ -1,0 +1,31 @@
+---
+- name: Test playbook
+  hosts: local
+  vars:
+    data_node: 3
+    is_cluster: "yes"
+  tasks:
+    - name: Create empty list for slave index
+      set_fact:
+        list_index_slave: []
+
+    - name: Populate list_index_slave if data_node > 1
+      set_fact:
+        list_index_slave: "{{ list_index_slave + [item|int] }}"
+      with_sequence: start=1 end={{ data_node|int }}
+      when: data_node > 1
+
+    - name: Debug list_index_slave
+      debug:
+        var: list_index_slave
+
+    - name: Remove first element from list
+      set_fact:
+        list_index_slave: "{{ list_index_slave[1:] }}"
+
+    - name: Debug
+      debug: 
+        msg: "{{ item }}"
+      with_items: "{{list_index_slave}}"
+    
+    

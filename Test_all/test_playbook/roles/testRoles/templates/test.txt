@@ -1,0 +1,24 @@
+
+############## MOST IMPORTANT CONFIG ####################
+
+# Cluster name for cluster
+cluster_name: {{ cluster_name }}-{{ cluster_id }}
+
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      # seeds is actually a comma-delimited list of addresses.
+      # Ex: "<ip1>,<ip2>,<ip3>"
+      - seeds: "{% for ip in list_ip %}{{ ip }}{% if not loop.last %},{% endif %}{% endfor %}"
+
+
+# TCP port, for commands and data
+storage_port: 7000
+
+listen_address: {{ ansible_host}}
+
+# port for the CQL native transport to listen for clients on
+native_transport_port: 9042
+
+
+

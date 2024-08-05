@@ -1,0 +1,46 @@
+[local]
+ansible-server ansible_host=127.0.0.1 ansible_connection=local ansible_user=root ansible_sudo_pass=phamdat280102 type_db=mysql 
+
+[stg]
+CheckAutoscale-9yogfrhd-master1 ansible_user=a-xplat ansible_host=10.20.10.6 type_db=mysql_innodb log_image=registry.fke.fptcloud.com/c9ef6bef-3468-4ed1-9722-36b68bac89b4/fluent-bit-fmon:mysql-v1.0
+
+
+[master]
+master1 ansible_host=10.10.90.29 version=12
+[slave]
+slave1 ansible_host=164.0.0.12
+slave2 ansible_host=164.0.0.6
+
+[nodes]
+master1 ansible_host=10.10.90.29 ansible_port=22 version=12
+
+[mysql-kafka]
+master1 ansible_host=10.10.90.11 ansible_port=22
+
+
+[sqlserver]
+master1 ansible_host=10.20.10.3 ansible_port=22
+
+[mariadb]
+master1 ansible_host=10.10.90.11 ansible_port=22
+
+[cassandra]
+master1 ansible_host=10.0.0.190 ansible_port=22
+
+[cassandra-kafka]
+master1 ansible_host=10.0.0.190 ansible_port=22
+
+[opensearch]
+node1 ansible_host=10.20.10.14
+node2 ansible_host=10.20.10.12
+node3 ansible_host=10.20.10.13
+
+[all:vars]
+ansible_sudo_pass=Db.xplat@Fci999
+ansible_ssh_user=a-xplat
+ansible_ssh_pass=Db.xplat@Fci999
+ansible_ssh_private_key_file=./private_key/id_rsa
+ansible_port=22
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'
+
+

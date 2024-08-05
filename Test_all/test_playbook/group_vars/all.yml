@@ -1,0 +1,22 @@
+vcd_url: https://stg.fptcloud.net
+vdc_name: XPLAT-FDE-STG
+vcd_user: xplat-stg_yjtnllfz@fptcloud.com
+vcd_pass: h(<T*_ww1VbOQ!38
+org_name: XPLAT-ORG
+cluster_id: 9sxumivw
+cluster_name: qwe111111111
+data_disk_size: 50
+
+docker_registry:
+  # registry: "registry.fke.fptcloud.com/8bd2b352-6ad2-4c14-930b-d796f06b61fd"
+  registry: "registry.fke.fptcloud.com"
+  username: "robot$8bd2b352-6ad2-4c14-930b-d796f06b61fd+fde-pull-push-account"
+  password: "lMFJCvY1qgJMyyDBeOEeTgy26gAk55si"
+
+# worker_count: 3
+# data_node: 2
+# is_cluster: "no"
+
+cluster_id: datpt123
+host_test: 103.52.112.151
+admin_password: H0zKFOvTcmve

@@ -1,0 +1,5 @@
+- hosts: cassandra-kafka
+  become: yes
+  gather_facts: yes
+  roles:
+    - reinstall_agent

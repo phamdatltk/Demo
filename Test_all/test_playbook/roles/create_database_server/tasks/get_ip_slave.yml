@@ -1,0 +1,26 @@
+---
+
+- name: print ip of all slaves
+  block:
+    - name: Get vm slave nics
+      vcd_vapp_vm_nic:
+        user: "{{ vcd_user }}"
+        password: "{{ vcd_pass }}"
+        org: "{{ org_name }}"
+        vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+        vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave{{ item }}"
+        vdc: "{{ vdc_name }}"
+        operation: read
+      register: nic_slave
+
+    - name: print all information  of nic slave to template file
+      copy:
+        content: "{{ nic_slave }}"
+        dest: /tmp/nic_slave
+
+    - name: print ip_address of slave server
+      shell: |
+        cat /tmp/nic_slave | jq .msg[].ip_address -r >> /tmp/ip_slave
+  
+    
+  when: is_cluster == "yes"

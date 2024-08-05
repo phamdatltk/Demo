@@ -1,0 +1,14 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: spark-pi
+spec:
+  template:
+    metadata:
+      name: spark-pi
+    spec:
+      containers:
+      - name: spark-pi
+        image: spark:3.3.1
+        command: ["bin/spark-submit", "--class", "org.apache.spark.examples.SparkPi", "--master", "k8s://kubernetes-admin@cluster.local", "--num-executors", "3", "--driver-memory", "512m", "--executor-memory", "512m", "--executor-cores", "1", "examples/jars/spark-examples_2.12-3.3.1.jar", "10"]
+      restartPolicy: Never

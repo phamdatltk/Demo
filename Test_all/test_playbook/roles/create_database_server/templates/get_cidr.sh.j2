@@ -1,0 +1,13 @@
+#!/bin/bash
+
+# Original IP address
+ip_address="{{ cidr }}"
+
+# Extract the network portion
+network=$(echo $ip_address | cut -d'/' -f1)
+
+# Change the last octet to 0
+modified_ip="${network%.*}.0"
+
+# Display the modified IP address
+echo "$modified_ip/24" >> /tmp/cidr_db

@@ -1,0 +1,210 @@
+---
+
+- name: add one more nic for master server
+  vcd_vapp_vm_nic:
+    vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+    vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    vdc: "{{ vdc_name }}"
+    nics:
+    - nic_id: 0
+      network: "{{ vm_network }}"
+      ip_allocation_mode: POOL
+      is_primary: False
+      is_connected: False
+      adapter_type: VMXNET3
+    state: present
+  when: 
+    - is_cluster == "yes"
+    - type_db != "mongodb_replicaset"
+
+- name: Change disk master node
+  vcd_vapp_vm_disk:
+    user: "{{ vcd_user }}"
+    password: "{{ vcd_pass }}"
+    org: "{{ org_name }}"
+    vm_name: "{{ item }}"
+    vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    vdc: "{{ vdc_name }}"
+    disks:
+      - name: 'Hard disk 2'
+        size: "{{ (data_disk_size|int ) * 1024 }}"
+    state: update
+  with_items:
+    - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+  register: result
+  retries: 3
+  delay: 10
+  until: result is not failed
+
+- name: Change disk in slave
+  vcd_vapp_vm_disk:
+    user: "{{ vcd_user }}"
+    password: "{{ vcd_pass }}"
+    org: "{{ org_name }}"
+    vm_name: "{{ item }}"
+    vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    vdc: "{{ vdc_name }}"
+    disks:
+      - name: 'Hard disk 2'
+        size: "{{ (data_disk_size|int ) * 1024 }}"
+    state: update
+  with_items:
+    - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave1"
+    - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave2"
+  register: result
+  retries: 3
+  delay: 10
+  until: result is not failed
+  when: 
+    - is_cluster == "yes"
+
+- name: Modify CPU, Memory
+  reconfigure_vm:
+    cluster_name: "{{ cluster_name }}"
+    cluster_id: "{{ cluster_id }}"
+    is_cluster: "{{ is_cluster }}"
+    vdc_name: "{{ vdc_name }}"
+    num_cpus: "{{ node_cpu }}"
+    memory_resource: "{{ node_ram * 1024 }}"
+    storage_profile_name: "{{ storage_profile }}"
+    hardware_version: "{{ vdc.hardware_version }}"
+    state: 'present'
+  register: result
+  retries: 3
+  delay: 5
+  until: result is not failed
+
+- name: Set metadata VM Master
+  vcd_vapp_vm:
+   target_vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+   target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+   target_vdc: "{{ vdc_name }}"
+   metadata:
+     node-role.database.master: true
+     cluster_id: "{{ cluster_id }}"
+     cluster_name: "{{ cluster_name | replace('_','-') }}"
+   metadata_type: String
+   metadata_visibility: READWRITE
+   operation: set_meta
+  register: result
+  retries: 3
+  delay: 5
+  until: result is not failed
+  when: 
+    - type_db != "kafka"
+
+- name: Set metadata VM Master
+  vcd_vapp_vm:
+   target_vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+   target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+   target_vdc: "{{ vdc_name }}"
+   metadata:
+     node-role.database.master: true
+     cluster_id: "{{ cluster_id }}"
+     cluster_name: "{{ cluster_name | replace('_','-') }}"
+     ip_public_db: "{{ ip_public_db }}"
+   metadata_type: String
+   metadata_visibility: READWRITE
+   operation: set_meta
+  register: result
+  retries: 3
+  delay: 5
+  until: result is not failed
+  when:
+    - type_db == "kafka"
+
+- name: Set metadata slave1
+  vcd_vapp_vm:
+   target_vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave1"
+   target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+   target_vdc: "{{ vdc_name }}"
+   metadata:
+     node-role.database.master: false
+     cluster_id: "{{ cluster_id }}"
+     cluster_name: "{{ cluster_name | replace('_','-') }}"
+   metadata_type: String
+   metadata_visibility: READWRITE
+   operation: set_meta
+  register: result
+  retries: 3
+  delay: 5
+  until: result is not failed
+  when:
+    - is_cluster == "yes"
+
+
+- name: Set metadata slave2
+  vcd_vapp_vm:
+   target_vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave2"
+   target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+   target_vdc: "{{ vdc_name }}"
+   metadata:
+     node-role.database.master: false
+     cluster_id: "{{ cluster_id }}"
+     cluster_name: "{{ cluster_name | replace('_','-') }}"
+   metadata_type: String
+   metadata_visibility: READWRITE
+   operation: set_meta
+  register: result
+  retries: 3
+  delay: 5
+  until: result is not failed
+  when:
+    - is_cluster == "yes"
+
+- name: power on vapp
+  vcd_vapp:
+    vapp_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    vdc: "{{ vdc_name }}"
+    operation: "poweron"
+  tags:
+    - update_ram_cpu
+
+- name: create anti-affinity rule
+  anti_affinity_rule_service:
+    vcd_url: "{{ vcd_url }}"
+    anti_affinity_rule_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-db"
+    vapp_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    vm_type: "slave"
+    vm_count: "{{ worker_count }}"
+    cluster_name: "{{ cluster_name }}"
+    cluster_id: "{{ cluster_id }}"
+    state: "present"
+  when:
+    - is_cluster == "yes"
+
+
+
+
+#
+#- name: update mem, cpu of master
+#  vcd_vapp_vm:
+#    target_vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+#    target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+#    target_vdc: "{{ vdc_name }}"
+#    virtual_cpus: "{{ node_cpu }}"
+#    cores_per_socket: "{{ node_core }}"
+#    memory: "{{ node_ram * 1024 }}"
+#    state: "update"
+#  register: result
+#  retries: 3
+#  delay: 10
+#  until: result is not failed
+#
+#- name: update mem, cpu of slave
+#  vcd_vapp_vm:
+#    target_vm_name: "{{ item }}"
+#    target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+#    target_vdc: "{{ vdc_name }}"
+#    virtual_cpus: "{{ node_cpu }}"
+#    cores_per_socket: "{{ node_core }}"
+#    memory: "{{ node_ram * 1024 }}"
+#    state: "update"
+#  with_items:
+#    - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave1"
+#    - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave2"
+#  when: is_cluster == "yes"
+#  register: result
+#  retries: 3
+#  delay: 10
+#  until: result is not failed

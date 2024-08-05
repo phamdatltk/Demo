@@ -1,0 +1,8 @@
+- name: Apply change
+  hosts: nodes
+  become: true
+  tasks:
+    - debug:
+        msg: "Hello world!!!"
+      when:
+        - inventory_hostname in groups['config'][0]

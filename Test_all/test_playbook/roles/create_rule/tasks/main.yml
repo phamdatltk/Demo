@@ -1,0 +1,195 @@
+# Set master ip
+- name: set ip master as variable
+  set_fact:
+    ip_internal_master: "{{ hostvars[item]['ansible_host'] }}"
+  with_items:
+    - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+
+- debug:
+    msg: "Master ip: {{ ip_internal_master }}"
+
+# Set slave1 ip
+- name: set ip slave1 as variable
+  set_fact:
+    ip_internal_slave1: "{{ hostvars[item]['ansible_host'] }}"
+  with_items:
+    - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave1"
+
+- debug:
+    msg: "Slave1 ip: {{ ip_internal_slave1 }}"
+
+# Set slave2 ip
+- name: set ip slave2 as variable
+  set_fact:
+    ip_internal_slave2: "{{ hostvars[item]['ansible_host'] }}"
+  with_items:
+    - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave2"
+
+- debug:
+    msg: "Slave2 ip: {{ ip_internal_slave2 }}"
+
+
+#### get id_vdc
+
+- name: copy get_id_vdc.py
+  template:
+    src: get_id_vdc.py.j2
+    dest: /tmp/get_id_vdc.py
+
+- name: Run get_id_vdc.py
+  shell: |
+    python3 /tmp/get_id_vdc.py
+
+- name: print id_vdc
+  shell: |
+    cat /tmp/id_vdc.json | jq '.values[] | select(.name=="{{ vdc_name }}") | .id' -r > /tmp/id_vdc
+
+- name: set ip_vdc as variable
+  set_fact:
+    id_vdc: "{{ lookup('file', '/tmp/id_vdc') }}"
+
+- name: print id_vdc
+  debug:
+    msg: "{{ id_vdc }}"
+
+## Get orgID
+
+- name: copy get_id_org.py
+  template:
+    src: get_id_org.py.j2
+    dest: /tmp/get_id_org.py
+
+- name: Run get_id_org.py
+  shell: |
+    python3 /tmp/get_id_org.py
+
+- name: print id_org
+  shell: |
+    cat /tmp/id_org.json | jq -r '.values[] | select(.name == "XPLAT-ORG") | .id' -r > /tmp/id_org
+
+- name: set ip_org as variable
+  set_fact:
+    id_org: "{{ lookup('file', '/tmp/id_org') }}"
+
+- name: print id_org
+  debug:
+    msg: "{{ id_org }}"
+
+# #####get id app port profile 
+
+- name: copy get_id_app_port_profile.py 
+  template:
+    src: get_id_app_port_profile.py.j2
+    dest: /tmp/get_id_app_port_profile_{{ internal_port }}.py
+
+- name: Run get id application port profile backend
+  shell: |
+    python3 /tmp/get_id_app_port_profile_{{ internal_port }}.py --port={{ internal_port }} --protocol='TCP' --scope='TENANT'
+
+- name: print id_app_port
+  shell: |
+    cat /tmp/id_app_port_profile_{{ internal_port }}.json | jq '.values[] | select (.name=="{{ app_port_name }}") | .id' -r -r > /tmp/id_app_port
+
+- name: set id_app_port  as variable
+  set_fact:
+    id_app_port_profile_backend: "{{ lookup('file', '/tmp/id_app_port') }}"
+
+- name: print id_app_port
+  debug:
+    msg: "{{ id_app_port_profile_backend }}"
+
+## Create application port kafka
+
+- block:
+
+  - name: copy create_application_port.py
+    template:
+      src: create_application_port.py.j2
+      dest: /tmp/create_application_port.py
+
+  - name: Run create_application_port.py
+    shell: |
+      export CURL_CA_BUNDLE=
+      python3 /tmp/create_application_port.py
+    register: result
+    retries: 3
+    delay: 10
+    until: result is not failed
+  
+  when: id_app_port_profile_backend == ""
+
+# #####get id app port profile 
+
+- name: copy get_id_app_port_profile.py 
+  template:
+    src: get_id_app_port_profile.py.j2
+    dest: /tmp/get_id_app_port_profile_{{ internal_port }}.py
+
+- name: Run get id application port profile backend
+  shell: |
+    python3 /tmp/get_id_app_port_profile_{{ internal_port }}.py --port={{ internal_port }} --protocol='TCP' --scope='TENANT'
+
+# - name: Register id  app_port_profile backend as var
+#   shell: cat /tmp/id_app_port_profile_internal.json
+
+- name: print id_app_port
+  shell: |
+    cat /tmp/id_app_port_profile_{{ internal_port }}.json | jq '.values[] | select (.name=="{{ app_port_name }}") | .id' -r -r > /tmp/id_app_port
+
+- name: set id_app_port  as variable
+  set_fact:
+    id_app_port_profile_backend: "{{ lookup('file', '/tmp/id_app_port') }}"
+
+
+###create dnat application port backend 
+
+
+- name: copy create_dnat.py
+  template:
+    src: create_dnat.py.j2
+    dest: /tmp/create_dnat_{{ item.name }}.py
+  with_items:
+    - {name: "DNAT-master-{{ cluster_id }}", ip_internal: "{{ ip_internal_master }}", externalPort: "{{ port_master_public }}"}
+    - {name: "DNAT-slave1-{{ cluster_id }}", ip_internal: "{{ ip_internal_slave1 }}", externalPort: "{{ port_slave1_public }}"}
+    - {name: "DNAT-slave2-{{ cluster_id }}", ip_internal: "{{ ip_internal_slave2 }}", externalPort: "{{ port_slave2_public }}"}
+  when: 
+    - is_cluster == "yes"
+    
+- name: Run create dnat
+  shell: |
+    export CURL_CA_BUNDLE=
+    python3 /tmp/create_dnat_"{{ item.name }}".py
+  register: result
+  retries: 3
+  delay: 10
+  until: result is not failed
+
+  with_items:
+    - {name: "DNAT-master-{{ cluster_id }}", ip_internal: "{{ ip_internal_master }}", externalPort: "{{ port_master_public }}"}
+    - {name: "DNAT-slave1-{{ cluster_id }}", ip_internal: "{{ ip_internal_slave1 }}", externalPort: "{{ port_slave1_public }}"}
+    - {name: "DNAT-slave2-{{ cluster_id }}", ip_internal: "{{ ip_internal_slave2 }}", externalPort: "{{ port_slave2_public }}"}
+  when: 
+    - is_cluster == "yes"
+
+
+- name: copy create_dnat.py
+  template:
+    src: create_dnat.py.j2
+    dest: /tmp/create_dnat_{{ item.name }}.py
+  with_items:
+    - {name: "DNAT-master-{{ cluster_id }}", ip_internal: "{{ ip_internal_master }}", externalPort: "{{ port_master_public }}"}
+  when: 
+    - is_cluster == "no"
+
+- name: Run create dnat
+  shell: |
+    export CURL_CA_BUNDLE=
+    python3 /tmp/create_dnat_"{{ item.name }}".py
+  register: result
+  retries: 3
+  delay: 10
+  until: result is not failed
+  with_items:
+    - {name: "DNAT-master-{{ cluster_id }}", ip_internal: "{{ ip_internal_master }}", externalPort: "{{ port_master_public }}"}
+  when: 
+    - is_cluster == "no"

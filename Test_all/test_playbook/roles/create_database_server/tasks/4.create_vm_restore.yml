@@ -1,0 +1,52 @@
+---
+
+- name: add VM org direct network to backup vapp
+  vcd_vapp:
+    user: "{{ vcd_user }}"
+    password: "{{ vcd_pass }}"
+    org: "{{ org_name }}"
+    vapp_name: "{{ restore.vapp_name }}"
+    vdc: "{{ vdc_name }}"
+    network: "{{ vm_network }}"
+    operation: add_org_network
+
+- name: Create VM restore
+  no_log: False
+  vcd_vapp_vm:
+    target_vm_name: "{{ restore.vm_name }}"
+    target_vapp: "{{ restore.vapp_name }}"
+    source_vdc: "{{ vdc_name }}"
+    target_vdc: "{{ vdc_name }}"
+    source_catalog_name: "{{ catalog.name }}"
+    source_template_name: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% else %}{{ catalog.template_default }}{% endif %}"
+    source_vm_name: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% else %}{{ catalog.template_default }}{% endif %}"
+    hostname: "{{ restore.vm_name }}"
+    vmpassword_auto: "false"
+    vmpassword_reset: "false"
+    ip_allocation_mode: "POOL"
+    state: "present"
+    power_on: "true"
+    all_eulas_accepted: "true"
+    storage_profile: "{{ storage_profile }}"
+    network: "{{ vm_network }}"
+
+- name: Change disk restore server
+  vcd_vapp_vm_disk:
+    user: "{{ vcd_user }}"
+    password: "{{ vcd_pass }}"
+    org: "{{ org_name }}"
+    vm_name: "{{ restore.vm_name }}"
+    vapp: "{{ restore.vapp_name }}"
+    vdc: "{{ vdc_name }}"
+    disks:
+      - name: 'Hard disk /root'
+        size: "{{ 60|int * 1024 }}"
+      - name: 'Hard disk /data'
+        size: "{{ (restore_disk_size|int ) * 1024 }}"
+    state: update
+
+- name: power on vapp restore
+  vcd_vapp:
+    vapp_name: "{{ restore.vapp_name }}"
+    vdc: "{{ vdc_name }}"
+    operation: "poweron"

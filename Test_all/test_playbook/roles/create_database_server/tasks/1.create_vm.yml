@@ -1,0 +1,85 @@
+---
+
+- name: add VM org direct network to vapp for database cluster
+  vcd_vapp:
+    user: "{{ vcd_user }}"
+    password: "{{ vcd_pass }}"
+    org: "{{ org_name }}"
+    vapp_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+    vdc: "{{ vdc_name }}"
+    network: "{{ vm_network }}"
+    operation: add_org_network
+  register: result
+  retries: 3
+  delay: 5
+  until: result is not failed
+
+- name: create vm database
+  create_vm:
+    cluster_name: "{{ cluster_name}}"
+    cluster_id: "{{ cluster_id }}"
+    is_cluster: "{{ is_cluster }}"
+    from_catalogName: "{{ catalog.name }}"
+    from_vappName: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'cassandra' %}{{catalog.template_cassandra}}{% elif type_db == 'kafka' %}{{catalog.template_kafka}}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% elif type_db == 'sqlserver' %}{{ catalog.template_sqlserver }}{% elif type_db == 'timescaledb' %}{{ catalog.template_timescaledb }}{% else %}{{ catalog.template_default }}{% endif %}"
+    network_name: "{{ vm_network }}"
+    storage_profile_name: "{{ storage_profile }}"
+#    placement_policy_name: "COMPUTE-01"
+    state: "present"
+
+
+
+#- name: Create master node
+#  no_log: False
+#  vcd_vapp_vm:
+#    target_vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+#    target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+#    source_catalog_name: "{{ catalog.name }}"
+#    source_template_name: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'kafka' %}{{catalog.template_kafka}}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% elif type_db == 'sqlserver' %}{{ catalog.template_sqlserver }}{% else %}{{ catalog.template_default }}{% endif %}"
+#    source_vm_name: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'kafka' %}{{catalog.template_kafka}}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% elif type_db == 'sqlserver' %}{{ catalog.template_sqlserver }}{% else %}{{ catalog.template_default }}{% endif %}"
+#    target_vdc: "{{ vdc_name }}"
+#    source_vdc: "{{ vdc_name }}"
+#    hostname: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+#    vmpassword: "{{ vm_pass }}"
+#    vmpassword_auto: "false"
+#    vmpassword_reset: "false"
+#    ip_allocation_mode: "POOL"
+#    state: "present"
+#    power_on: "false"
+#    all_eulas_accepted: "true"
+#    storage_profile: "{{ storage_profile }}"
+#    network: "{{ vm_network }}"
+#  register: result
+#  retries: 5
+#  delay: 15
+#  until: result is not failed
+##  when:
+##    - is_cluster == "no"
+#
+#- name: Create slave node
+#  no_log: False
+#  check_mode: false
+#  vcd_vapp_vm:
+#    target_vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave{{ item }}"
+#    target_vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+#    source_catalog_name: "{{ catalog.name }}"
+#    source_template_name: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'kafka' %}{{catalog.template_kafka}}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% elif type_db == 'sqlserver' %}{{ catalog.template_sqlserver }}{% else %}{{ catalog.template_default }}{% endif %}"
+#    source_vm_name: "{% if type_db == 'postgres' %}{{ catalog.template_psql }}{% elif type_db == 'kafka' %}{{catalog.template_kafka}}{% elif type_db == 'mysql_innodb' %}{{ catalog.template_mysql }}{% elif type_db == 'mongodb_replicaset' %}{{ catalog.template_mongo }}{% elif type_db == 'redis_replication' %}{{ catalog.template_redis }}{% elif type_db == 'mariadb' %}{{ catalog.template_mariadb }}{% elif type_db == 'sqlserver' %}{{ catalog.template_sqlserver }}{% else %}{{ catalog.template_default }}{% endif %}"
+#    target_vdc: "{{ vdc_name }}"
+#    source_vdc: "{{ vdc_name }}"
+#    hostname: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave{{ item }}"
+#    vmpassword: "{{ vm_pass }}"
+#    vmpassword_auto: "false"
+#    vmpassword_reset: "false"
+#    ip_allocation_mode: "POOL"
+#    state: "present"
+#    power_on: "false"
+#    all_eulas_accepted: "true"
+#    storage_profile: "{{ storage_profile }}"
+#    network: "{{ vm_network }}"
+#  with_sequence: start=1 end={{ worker_count|int if worker_count|int > 0 else 1 }}
+#  register: result
+#  retries: 5
+#  delay: 15
+#  until: result is not failed
+#  when:
+#    - worker_count|int > 0

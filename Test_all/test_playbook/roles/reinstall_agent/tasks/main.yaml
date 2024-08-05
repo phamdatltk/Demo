@@ -1,0 +1,44 @@
+# Login docker
+- name: Log into xPlat registry and force re-authorization
+  docker_login:
+    registry: "{{ docker_registry.registry }}"
+    username: "{{ docker_registry.username }}"
+    password: "{{ docker_registry.password }}"
+    reauthorize: yes
+
+# Pull new image
+- name: Pull cassandra Agent Docker image
+  docker_image:
+    name: registry.fke.fptcloud.com/8bd2b352-6ad2-4c14-930b-d796f06b61fd/cassandra-agent
+    source: pull
+  become: true
+
+- name: Copy env for agent
+  template:
+    src: env_cassandra.j2
+    dest: /opt/env_cassandra
+    follow: true
+
+# Run new agent
+- name: Start agent
+  docker_container:
+    name: cassandra
+    image: registry.fke.fptcloud.com/8bd2b352-6ad2-4c14-930b-d796f06b61fd/cassandra-agent
+    state: started
+    restart: yes
+    restart_policy: always
+    env_file: /opt/env_cassandra
+    log_driver: json-file
+    log_options:
+      max-size: "15m"
+
+# Log out
+- name: Log out of DockerHub
+  docker_login:
+    state: absent
+
+# Delete file docker config
+- name: Remove file docker config
+  ansible.builtin.file:
+    path: /root/.docker/config.json
+    state: absent

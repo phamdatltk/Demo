@@ -1,0 +1,96 @@
+import requests
+import json
+
+from pyvcloud.vcd.client import (
+    BasicLoginCredentials,
+    Client
+)
+
+class RequestInfo:
+    client = None
+    headers = None
+    xml_headers = None
+    api_url = None
+    version_url = None
+
+    def __init__(self, client):
+        self.version_url = f"{client.get_cloudapi_uri()}/1.0.0"
+        self.api_url = client.get_api_uri()
+        self.client = client
+        self.headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json;version=35.0",
+            "Authorization": f"Bearer {client._vcloud_access_token}",
+        }
+        self.xml_headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/*+xml;version=35.0",
+            "Authorization": f"Bearer {client._vcloud_access_token}",
+        }
+        self.json_special_headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/*+json;version=35.0",
+            # "X-VMWARE-VCLOUD-TENANT-CONTEXT": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+            "Authorization": f"Bearer {client._vcloud_access_token}",
+        }
+
+def login(org, user, password,
+        api_version="35.0",
+        verify_ssl_certs=False,
+        log_file="vcd.log",
+        log_request=False,
+        log_header=False,
+        log_body=False):
+        client = Client(
+            "{{ vcd_url }}",
+            api_version=api_version,
+            verify_ssl_certs=verify_ssl_certs,
+            log_file=log_file,
+            log_requests=log_request,
+            log_headers=log_header,
+            log_bodies=log_body,
+        )
+        client.set_credentials(BasicLoginCredentials(user, org, password))
+        return client
+
+def handle_get(url, headers):
+    print(url)
+    resp = requests.get(url, headers=headers, verify=False)
+    if not resp.ok:
+        raise Exception(resp.content)
+    return resp
+
+def create_nat_rule(client, edge_gateway_urn, nat_rule):
+    ip_address = nat_rule["ip_address"]
+    ip_address_internal = nat_rule["ip_address_internal"]
+    rule_obj = {
+        "name": "{{ item.name }}",
+        "enabled": True,
+        "ruleType": "DNAT",
+        "externalAddresses": ip_address,
+        "internalAddresses": ip_address_internal,
+        "applicationPortProfile": {
+            "name": "{{ app_port_name }}",
+            "id": "{{ id_app_port_profile_backend }}"
+        },
+        "dnatExternalPort": "{{ item.externalPort }}"
+    }
+
+    params = RequestInfo(client)
+    resp = requests.post(
+        f"{params.version_url}/edgeGateways/{edge_gateway_urn}/nat/rules",
+        headers=params.headers,
+        data=json.dumps(rule_obj),
+	verify=False,
+    )
+    if not resp.ok:
+        raise Exception(resp.content)
+    return rule_obj
+
+def main():
+    passwd=r"{{ vcd_pass }}"
+    client = login("{{ org_name }}", "{{ vcd_user }}", str(passwd))
+    create_nat_rule(client, "{{ edge_gateway_id }}", {"ip_address": "{{ ip_external }}",  "ip_address_internal": "{{ item.ip_internal }}"})
+
+if __name__ == "__main__":
+    main()

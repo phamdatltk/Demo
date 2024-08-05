@@ -1,0 +1,35 @@
+- block:
+
+  - name: Restart service
+    ansible.builtin.service:
+      name: opensearch
+      state: restarted
+      enabled: true
+
+  - wait_for:
+      timeout: 10
+#  - debug:
+#      msg: "{{ ansible_host }}"
+
+  - name: Check cluster health
+    uri:
+      url: "https://10.20.10.6:9200/_cluster/health"
+      method: GET
+      user: "admin"
+      password: "{{ admin_password }}"
+      force_basic_auth: yes
+      validate_certs: no
+      status_code: 200
+    register: opensearch_health
+    until: opensearch_health.json.status == "green"
+    retries: 60
+    delay: 5
+
+  - debug:
+      msg: "Cluster health: {{opensearch_health.json.status}}"
+#
+#  - fail:
+#      msg: "Cluster is not green"
+#    when: opensearch_health.json.status != "green"
+
+  when: inventory_hostname == item

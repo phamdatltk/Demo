@@ -1,0 +1,89 @@
+import requests
+import json
+import argparse
+
+from pyvcloud.vcd.client import (
+    BasicLoginCredentials,
+    Client
+)
+
+class RequestInfo:
+    client = None
+    headers = None
+    xml_headers = None
+    api_url = None
+    version_url = None
+
+    def __init__(self, client):
+        self.version_url = f"{client.get_cloudapi_uri()}/1.0.0"
+        self.api_url = client.get_api_uri()
+        self.client = client
+        self.headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json;version=35.0",
+            "Authorization": f"Bearer {client._vcloud_access_token}",
+        }
+        self.xml_headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/*+xml;version=35.0",
+            "Authorization": f"Bearer {client._vcloud_access_token}",
+        }
+        self.json_special_headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/*+json;version=35.0",
+            # "X-VMWARE-VCLOUD-TENANT-CONTEXT": "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+            "Authorization": f"Bearer {client._vcloud_access_token}",
+        }
+
+def login(org, user, password,
+          api_version="35.0",
+          verify_ssl_certs=False,
+          log_file="vcd.log",
+          log_request=False,
+          log_header=False,
+          log_body=False):
+          client = Client(
+              "{{ vcd_url }}",
+              api_version=api_version,
+              verify_ssl_certs=verify_ssl_certs,
+              log_file=log_file,
+              log_requests=log_request,
+              log_headers=log_header,
+              log_bodies=log_body,
+          )
+          client.set_credentials(BasicLoginCredentials(user, org, password))
+          return client
+
+def handle_get(url, headers):
+    print(url)
+    resp = requests.get(url, headers=headers, verify=False)
+    if not resp.ok:
+        raise Exception(resp.content)
+    return resp
+
+def get_edge_gateway_id(client, port, protocol, context, scope):
+    params = RequestInfo(client)
+
+    resp = handle_get(
+        f"{params.version_url}/applicationPortProfiles?page=1&pageSize=100&filter=((applicationPorts.destinationPorts=={ port });(applicationPorts.protocol=={protocol});(_context=={context});(scope=={scope});(usableForNAT==true))", headers=params.headers
+    )
+    return resp.json()
+
+def main():
+    parser = argparse.ArgumentParser(description='Script so useful.')
+    parser.add_argument("--port")
+    parser.add_argument("--protocol")
+    parser.add_argument("--scope")
+
+    args = parser.parse_args()
+
+    port = args.port
+    protocol = args.protocol
+    scope = args.scope
+    passwd=r"{{ vcd_pass }}"
+    client = login("{{ org_name }}", "{{ vcd_user }}", str(passwd))
+    with open('/tmp/id_app_port_profile_{{ internal_port }}.json', 'w') as json_file:
+        json.dump(get_edge_gateway_id(client, port, protocol, "{{ id_vdc }}", scope), json_file)
+
+if __name__ == "__main__":
+    main()

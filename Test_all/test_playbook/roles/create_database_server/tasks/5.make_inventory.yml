@@ -1,0 +1,295 @@
+---
+###get ip of restore
+- name: get vm restore nics
+  block:
+    - name: get vm restore nics
+      vcd_vapp_vm_nic:
+        user: "{{ vcd_user }}"
+        password: "{{ vcd_pass }}"
+        org: "{{ org_name }}"
+        vapp: "{{ restore.vapp_name }}"
+        vm_name: "{{ restore.vm_name }}"
+        vdc: "{{ vdc_name }}"
+        operation: read
+      register: nic_restore
+
+    - name: print all information  of nic restore server to template file
+      copy:
+        content: "{{ nic_restore }}"
+        dest: /tmp/nic_restore
+
+    - name: print ip_address of restore server
+      shell: |
+        cat /tmp/nic_restore | jq .msg[].ip_address -r > /tmp/ip_restore
+
+    - name: set ip_restore as variable
+      set_fact:
+        ip_restore: "{{ lookup('file', '/tmp/ip_restore') }}"
+
+    - name: debug ip restore
+      debug:
+        msg: "{{ ip_restore }}"
+  when: need_restore == "yes"
+
+###get ip of backup 
+- name: get vm backup nics
+  block:
+    - name: get vm backup nics
+      vcd_vapp_vm_nic:
+        user: "{{ backup_vcd_user }}"
+        password: "{{ backup_vcd_pass }}"
+        host: "{{ backup_vcd_url }}"
+        org: "{{ backup_org_name }}"
+        vdc: "{{ backup_vdc_name }}"
+        vapp: "{{ backup.vapp_name }}"
+        vm_name: "{{ backup.vm_name }}"
+        operation: read
+      register: nic_backup
+    
+    - name: print all information  of nic backup server to template file
+      copy:
+        content: "{{ nic_backup }}"
+        dest: /tmp/nic_backup
+    
+    - name: print ip_address of master server
+      shell: |
+        cat /tmp/nic_backup | jq .msg[].ip_address -r > /tmp/ip_backup
+    
+    - name: set ip_master as variable
+      set_fact:
+        ip_backup: "{{ lookup('file', '/tmp/ip_backup') }}"
+    
+    - name: debug ip backup
+      debug:
+        msg: "{{ ip_backup }}"
+  when: (need_backup == "yes") or (run_backup == "yes")
+    
+###get ip of master      
+- name: get ip master
+  block:
+    - name: Get master vm nic
+      vcd_vapp_vm_nic:
+        user: "{{ vcd_user }}"
+        password: "{{ vcd_pass }}"
+        org: "{{ org_name }}"
+        vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+        vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+        vdc: "{{ vdc_name }}"
+        operation: read
+      register: nic_master
+    
+    - name: debug print all nic_master
+      debug:
+        msg: "{{ nic_master }}"
+
+    - name: print all information  of nic master to template file
+      copy: 
+        content: "{{ nic_master }}" 
+        dest: /tmp/nic_master
+    
+    - name: print ip_address of master server
+      shell: |
+        cat /tmp/nic_master | jq .msg | jq '.[] | select(.primary==true) | .ip_address' -r > /tmp/ip_master
+    
+    - name: print ip_address of virtual ip
+      shell: |
+        cat /tmp/nic_master | jq .msg | jq '.[] | select(.primary==false) | .ip_address' -r > /tmp/ip_vip
+      when:
+        - is_cluster == "yes"
+      
+    - name: set ip_master as variable
+      set_fact:
+        ip_master: "{{ lookup('file', '/tmp/ip_master') }}"
+    
+    - name: set ip_vip as variable
+      set_fact:
+        ip_vip: "{{ lookup('file', '/tmp/ip_vip') }}"
+      when:
+        - is_cluster == "yes"
+        
+    - set_stats:
+        data:
+          ip_vip: "{{ ip_vip }}"
+        aggregate: no
+      when:
+        - is_cluster == "yes"
+        
+    - name: debug ip_master
+      debug:
+        msg: "{{ ip_master }}"
+    
+    - name: debug ip_vip
+      debug:
+        msg: "{{ ip_vip }}"
+      when:
+        - is_cluster == "yes"
+
+###get ip of all slaves
+- name: print ip of all slaves
+  include_tasks: get_ip_slave.yml
+  with_sequence: start=1 end={{ worker_count|int if worker_count|int > 0 else 1 }}
+  when:
+    - worker_count|int > 0
+
+- name: make ip slave to variable
+  include_tasks: make_ipslave_to_variable.yml
+  with_sequence: start=1 end={{ worker_count|int if worker_count|int > 0 else 1 }}
+  when:
+    - worker_count|int > 0
+
+- debug:
+    msg: "Ip slave 1: {{ ip_slave_1 }}"
+  when:
+    - type_db == "kafka"
+    - is_cluster == "yes"
+
+- debug:
+    msg: "Ip slave 2: {{ ip_slave_2 }}"
+  when:
+    - type_db == "kafka"
+    - is_cluster == "yes"
+    
+###get ip of new slave
+
+- name: print ip of new  slaves
+  block:
+    - name: Get vm new slave nics
+      vcd_vapp_vm_nic:
+        user: "{{ vcd_user }}"
+        password: "{{ vcd_pass }}"
+        org: "{{ org_name }}"
+        vapp: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}"
+        vm_name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave{{ random_number }}"
+        vdc: "{{ vdc_name }}"
+        operation: read
+      register: nic_new_slave
+
+    - name: print all information  of nic slave to template file
+      copy:
+        content: "{{ nic_new_slave }}"
+        dest: /tmp/nic_new_slave
+
+    - name: print ip_address of slave server
+      shell: |
+        cat /tmp/nic_new_slave | jq .msg[].ip_address -r >> /tmp/ip_new_slave
+
+    - name: Add new slave to AWX
+      tower_host:
+        name: new_slave1
+        inventory: "{{ inventory_name }}"
+        state: present
+        variables:
+          ansible_host: "{{ lookup('file', '/tmp/ip_new_slave').splitlines()[0] }}"
+          ansible_port: 22
+          ip_vip: "{{ ip_vip | default(omit) }}"
+          type: "slave"
+
+    - name: add hosts to backup group
+      tower_group:
+        name: new_slave
+        inventory: "{{ inventory_name }}"
+        state: present
+        hosts:
+          - new_slave1
+  when: add_slave == "yes"
+
+####make database_inventory
+
+- name: Add restore to AWX
+  tower_host:
+    name: "{{ restore.vm_name }}"
+    inventory: "{{ inventory_name }}"
+    state: present
+    variables:
+      ansible_host: "{{ ip_restore }}"
+      ansible_port: 22
+      ip_vip: "{{ ip_vip | default(omit) }}"
+  when:
+    - need_restore == "yes"
+
+- name: add hosts to restore group
+  tower_group:
+    name: restore
+    inventory: "{{ inventory_name }}"
+    state: present
+    hosts:
+      - "{{ restore.vm_name }}"
+  when:
+    - need_restore == "yes"
+
+- name: Add backup to AWX
+  tower_host:
+    name: "{{ backup.vm_name }}"
+    inventory: "{{ inventory_name }}"
+    state: present
+    variables:
+      ansible_host: "{{ ip_backup }}"
+      ansible_port: 22
+      ip_vip: "{{ ip_vip | default(omit) }}"
+  when: 
+    - (need_backup == "yes") or (run_backup == "yes")
+
+- name: add hosts to backup group
+  tower_group:
+    name: backup
+    inventory: "{{ inventory_name }}"
+    state: present
+    hosts:
+      - "{{ backup.vm_name }}"
+  when: 
+    - (need_backup == "yes") or (run_backup == "yes")
+
+- name: Add master to AWX
+  tower_host:
+    name: "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+    inventory: "{{ inventory_name }}"
+    state: present
+    variables:
+      ansible_host: "{{ ip_master }}"
+      ansible_port: 22
+      ip_vip: "{{ ip_vip | default(omit) }}"
+      ip_master: "{{ ip_master }}"
+      server_id: 1
+      type: "master" 
+
+- name: add hosts to slave group
+  tower_group:
+    name: slave
+    inventory: "{{ inventory_name }}"
+    state: present
+    hosts:
+      - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave1"
+      - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-slave2"
+  when: 
+    - is_cluster == "yes"
+
+- name: add hosts to master group
+  tower_group:
+    name: master
+    inventory: "{{ inventory_name }}"
+    state: present
+    hosts:
+      - "{{ cluster_name | replace('_','-') }}-{{ cluster_id }}-master1"
+
+- name: add nodes group
+  tower_group:
+    name: nodes
+    inventory: "{{ inventory_name }}"
+    state: present
+    children:
+      - master
+      - slave
+  when:
+    - is_cluster == "yes"
+
+- name: add nodes group
+  tower_group:
+    name: nodes
+    inventory: "{{ inventory_name }}"
+    state: present
+    children:
+      - master
+  when:
+    - is_cluster == "no"
+
+
