@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: generate-data-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: generate-data-deployment
+  template:
+    metadata:
+      labels:
+        app: generate-data-deployment
+    spec:
+      containers:
+      - name: generate-data-deployment
+        image: henrypham2801/generate-data-api
+        ports:
+        - containerPort: 5000
